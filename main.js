@@ -4,10 +4,11 @@ import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 console.clear();
 
-const size = 512;
+const size = 1024;
 
 const canvas = document.getElementById("canvas");
-canvas.width = canvas.height = size;
+canvas.width = size;
+canvas.height = size * 0.5;
 console.log(canvas);
 const dpr = window.devicePixelRatio / window.devicePixelRatio;
 const renderer = new THREE.WebGLRenderer({ canvas });
@@ -16,16 +17,16 @@ renderer.autoClear = false;
 
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 
-const camera = new THREE.PerspectiveCamera(40, 1 / 1, 0.01, 300);
-camera.position.set(2, 9, 9);
-const look_at = new THREE.Vector3(0, 3, 0);
+const camera = new THREE.PerspectiveCamera(20, 1 / 1, 0.01, 300);
+camera.position.set(0, 0, 10);
+const look_at = new THREE.Vector3(0, 2, 0);
 const light_dir = new THREE.Vector3(-1, 1, -2).normalize();
 
 const stats = new Stats();
 document.getElementById("container").appendChild(stats.dom);
 
 const controls = {
-  shadow: true,
+  shadow: false,
   balloon: 50,
 };
 const gui = new GUI();
@@ -337,11 +338,15 @@ float noise( float e){
 vec3 letters( vec3 a, vec3 p, int n, float r, float h){
   float d, e;
 
-	vec3 q = vec3( r * sin( h), 2.0 + 1.0 * sin( r + 0.7 * t - h), r * cos( h));
-			q = p - q;
+	//vec3 q = vec3( r * sin( h), 2.0 + 2.0 * sin( r + 0.7 * t - h), r * cos( h));
+	vec3 q = vec3( (r - .5) * 7.5 , sin(h + (r-.5)*PI*2. ) * 0.25, 0.0);
+
+	
+	q = p - q;
 			if( length( q) - 0.8 < a.z){ 
 				q.xz *= rot( t * r - h);
-				//q.xy *= rot( 0.3 * sin( 1.5 * r * t));
+
+				q.xy *= rot( 0.2 * sin( 1.5 * r * t));
 
 				q *= 3.0;
 				d = length( vec2( shopify( n, q.xy), q.z)) / 3.0
@@ -366,8 +371,8 @@ vec3 letters( vec3 a, vec3 p, int n, float r, float h){
 			vec3 a = vec3( 1, 0, 99);
 
 			// inner ring
-			for( i = 0.0; i < 6.1; i++) a = letters( a, p, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
-
+			//for( i = 0.0; i < 6.1; i++) a = letters( a, p, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
+			for( i = 0.0; i < 6.1; i++) a = letters( a, p, int( mod( i, 26.0)), (i/6.), 0.5 * t);
 			// outer ring
 			//for( i = 0.0; i < 12.1; i++) a = letters( a, p, int( mod( 7.0 + i, 26.0)), 3.6, 0.26 + (PI * 2.) * i / 13.0 - 0.4 * t);
 
@@ -376,11 +381,12 @@ vec3 letters( vec3 a, vec3 p, int n, float r, float h){
 			//if( e < a.z) a = vec3( 2, 0, e);
 
 			// ground
+			/*
 			if( v.y < 0.0){ 
-				e = p.y + 0.1;
+				e = p.y + 1.5;
 				if( e < a.z) a = vec3( 1, 3, e);
 			}
-
+			*/
 			return vec3(a.x,a.y,a.z);
 		}
 
@@ -402,12 +408,13 @@ vec3 letters( vec3 a, vec3 p, int n, float r, float h){
 			int i;
 			float f, g, s_0;
 			vec2 w;
-			vec3 n, p, r, v, best_p;
-			vec3 c;
+			vec3 n, p, r, best_p;
+			vec3 color;
 			vec3 h, best_h;
 			//ivec2 iw;
 			mat3 cam_mat;
-
+			vec3 view;
+			vec3 reflected;
 			const float e = 0.001;
 
 			w = gl_FragCoord.xy;
@@ -416,71 +423,76 @@ vec3 letters( vec3 a, vec3 p, int n, float r, float h){
 
 			//★ 視線の変換行列を求める。
 			p = cam_pos;
-			v = normalize( look_at - p);
-			n = normalize( cross( vec3( 0, 1, 0), v));
-			cam_mat = mat3( -n, normalize( cross( v, n)), v);
+			view = normalize( look_at - p);
+			n = normalize( cross( vec3( 0, 1, 0), view));
+			cam_mat = mat3( -n, normalize( cross( view, n)), view);
 
-			v = cam_mat * vec3( w * tan( 20.0 / 180.0 * 3.14159), 1); //★ 視線を PerspectiveCamera (FOV 40) と一致させる。(半分の 20 で指定。)
-			v = normalize( v); //★ デプスバッファと比較する場合はノーマライズしない (？)
+			view = cam_mat * vec3( w * tan( 30.0 / 180.0 * 3.14159), 1); //★ 視線を PerspectiveCamera (FOV 40) と一致させる。(半分の 20 で指定。)
+			view = normalize( view); //★ デプスバッファと比較する場合はノーマライズしない (？)
 
 			//◍◍◍◍◍◍◍◍◍◍
 
 			best_h.z = FAR;
 			g = 0.0;
 			for( i = 0; i < 40 && g < FAR; i++){
-				h = scene( p, v);
+				h = scene( p, view);
 				if( h.z < 0.001) break;
 				if( h.z < best_h.z){ best_h = h; best_p = p;}
 				g += h.z;
-				p += h.z * v;
+				p += h.z * view;
 			}
 
 			if( FAR <= g){ //★ 遠い。背景。
-				c = texture( tex_env_blur, vec2(
-					0.5 + 0.5 * atan( v.x, v.z) / 3.14159,
-					pow( acos( -v.y) / 3.14159, 0.7) //★ 空を多めに。
+				color = texture( tex_env_blur, vec2(
+					0.5 + 0.5 * atan( view.x, view.z) / 3.14159,
+					pow( acos( -view.y) / 3.14159, 0.7) //★ 空を多めに。
 				)).rgb;
-				c += 0.1; //★ 空気遠近法。
+				color += 0.1; //★ 空気遠近法。
 
 			} else{
 				if( 0.001 <= h.z){ h = best_h; p = best_p;} //★ 物体の表面にたどり着けなかったら、ここまでで表面にいちばん近かった位置を採用。
 
 				n = normalize( vec3( //★ 法線。
-					scene( p + vec3( e, 0, 0), v).z,
-					scene( p + vec3( 0, e, 0), v).z,
-					scene( p + vec3( 0, 0, e), v).z
+					scene( p + vec3( e, 0, 0), view).z,
+					scene( p + vec3( 0, e, 0), view).z,
+					scene( p + vec3( 0, 0, e), view).z
 				) - h.z);
 
-				r = reflect( v, n);
+				reflected = reflect( view, n);
 				if( is_shadow
 					&& h.x < 2.1 //★ 1 : 地面 または 2 : 球体。
-				) s_0 = shadow( p, r, 20.0); else s_0 = 1.0; //★ 向こう側の明るさが遮られる。
+				) s_0 = shadow( p, reflected, 20.0); else s_0 = 1.0; //★ 向こう側の明るさが遮られる。
 
 				if( h.x < 1.1){
-					//★ 地面。
-					c = texture( tex_env_blur, vec2(
-						0.5 + 0.5 * atan( r.x, r.z) / 3.14159,
-						acos( -r.y) / 3.14159
+					//ground
+					
+					color = texture( tex_env_blur, vec2(
+						0.5 + 0.5 * atan( view.x, view.z) / 3.14159,
+						acos( -view.y) / 3.14159
 					)).rgb;
-					g = 0.333 * ( c.r + c.g + c.b);
-					c = mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + h.y), sin( 3.14159 * g));
-					c *= 0.8;
+					g = 0.333 * ( color.r + color.g + color.b);
+					//color = mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + h.y), sin( 3.14159 * g));
+					//color *= 0.8;
 
 				} else{
-					//★ メタリック。
-					c = texture( tex_env, vec2(
-						0.5 + 0.5 * atan( r.x, r.z) / 3.14159,
-						acos( -r.y) / 3.14159
+					// letters
+					color = texture( tex_env_blur, vec2(
+						0.5 + 0.5 * atan( reflected.x, reflected.z) / 3.14159,
+						acos( -reflected.y) / 3.14159
 					)).rgb;
-					g = 0.333 * ( c.r + c.g + c.b);
-					c = h.x < 3.1 ? mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + 0.5 * r + 0.5 * p.y + h.y), sin( 3.14159 * g)) //★ 法線カラーと縦グラデも。
-					: mix( vec3( smoothstep( 0.4, 0.6, g)), vec3( 1, 0, 0), sin( 3.14159 * g)); //★ くちびるの色。
-				}
+					g = 0.333 * ( color.r + color.g + color.b);
+					color *= vec3(0,.7 +g * 1.3,0);
+					color = pow(color,vec3(1.5));
+					/*
+					color = h.x < 3.1 ? mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + 0.5 * r + 0.5 * p.y + h.y), sin( 3.14159 * g)) //★ 法線カラーと縦グラデも。
+					 : mix( vec3( smoothstep( 0.4, 0.6, g)), vec3( 1, 0, 0), sin( 3.14159 * g)); //★ くちびるの色。
+					*/
+					}
 
-				c *= 0.3 + 0.7 * s_0;
+				color *= 0.3 + 0.7 * s_0;
 			}
 
-			gl_FragColor = vec4( c, 1);
+			gl_FragColor = vec4( color, 1);
 		}
 	`,
 });
@@ -494,15 +506,10 @@ animate();
 
 function animate() {
   requestAnimationFrame(animate);
-
   material.uniforms.t.value = count;
   material.uniforms.is_shadow.value = controls.shadow;
   material.uniforms.balloon.value = controls.balloon / 100;
-  // plane.material = material;
-
   renderer.render(scene, ortho);
-
   stats.update();
   count = count + 0.02;
-  //console.log(count);
 }
