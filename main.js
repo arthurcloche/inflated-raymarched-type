@@ -86,15 +86,15 @@ const material = new THREE.ShaderMaterial({
     const float PI = 3.14159;
     
 #define line( x0, y0, x1, y1){ \
-	float g, m; \
+	float sdf, m; \
 	vec2 p0, v1, vp; \
 	\
 	p0 = vec2( x0, y0); \
 	v1 = vec2( x1, y1) - p0; \
-	g = length( v1); \
-	vp = p - p0; \
-	v1 /= g; \
-	d = min( d, distance( vp, clamp( dot( vp, v1), 0.0, g) * v1)); \
+	sdf = length( v1); \
+	vp = position - p0; \
+	v1 /= sdf; \
+	d = min( d, distance( vp, clamp( dot( vp, v1), 0.0, sdf) * v1)); \
 }
 
 float arc_dst( vec2 q, float t0, float t1){
@@ -112,22 +112,21 @@ float arc_dst( vec2 q, float t0, float t1){
 }
 
 #define arc( cx, cy, r_, t0_, t1_){ \
-	float g, r, r2, t0, t1, tt, tv; \
+	float sdf, r, r2, t0, t1, tt, tv; \
 	vec2 q; \
 	\
 	r = float( r_); \
 	t0 = 0.25 * float( t0_); \
 	t1 = 0.25 * float( t1_); \
 	\
-	q = ( p - vec2( cx, cy)) / r; \
+	q = ( position - vec2( cx, cy)) / r; \
 	d = min( d, arc_dst( q, t0, t1) * r); \
 }
 
 
 float shopify(int letter, vec2 q){
-
-  float d = 9.9;
-  vec2 p = q + vec2(1,2);
+  float d = FAR;
+  vec2 position = q + vec2(0,2);
   switch(letter){
     case 0 : // S
       arc(1,3,1,0,3);
@@ -170,12 +169,12 @@ float shopify(int letter, vec2 q){
   return d;
 }
 
-float chr( int n, vec2 q){
+float chr( int normals, vec2 q){
 	
 	float d = 9.9;
-	vec2 p = q + vec2( 1, 2);
+	vec2 position = q + vec2( 1, 2);
 
-	switch( n){
+	switch( normals){
 	case 0: //★ A
 		line( 1, 4, 0, 0)
 		line( 1, 4, 2, 0)
@@ -335,55 +334,50 @@ float noise( float e){
 	);
 }
 
-vec3 letters( vec3 a, vec3 p, int n, float r, float h){
-  float d, e;
+# define progress mod(t * .5 + (r * 1.25) * PI * 2., PI * 2.0)
 
-	//vec3 q = vec3( r * sin( h), 2.0 + 2.0 * sin( r + 0.7 * t - h), r * cos( h));
-	vec3 q = vec3( (r - .5) * 7.5 , sin(h + (r-.5)*PI*2. ) * 0.25, 0.0);
-
+vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
+  	float d, e;
+	// circular pos	
+  	//vec3 q = vec3( r * sin( hit), 2.0 + 2.0 * sin( r + 0.7 * t - hit), r * cos( hit));
+ 	// line position	
+  	vec3 pos = vec3( -0.25 + (r - .5) * (7.5 + balloon * 2.) , sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*2. ) * 0.25);
+	  pos = position - pos;
 	
-	q = p - q;
-			if( length( q) - 0.8 < a.z){ 
-				q.xz *= rot( t * r - h);
+	if( length( pos) - 0.8 < a.z){ 
+		pos.xz *= rot(cos(progress) * .25);
+		pos.xy *= rot( sin(progress)*.25);
+		pos *= 3.0;
+		d = length( vec2( shopify( normals, pos.xy), pos.z)) / 3.0
+		- 0.1 - 0.3 * balloon;
 
-				q.xy *= rot( 0.2 * sin( 1.5 * r * t));
-
-				q *= 3.0;
-				d = length( vec2( shopify( n, q.xy), q.z)) / 3.0
-					- 0.1 - 0.3 * balloon;
-
-				if( d < a.z){
-					e = 9.0 * atan( q.y, q.x);
-					d += balloon * (
-						0.8 * pow( max( 0.0, 1.0 - ( 1.2 - 0.5 * balloon) * abs( q.z)) * noise( e), 8.0) + 
-						0.2 * pow( max( 0.0, 1.0 - ( 1.8 - 1.1 * balloon) * abs( q.z)) * noise( 3.0 * e), 4.0)
-					);
-					a = vec3( 3, h, d);
-				}
+		if( d < a.z){
+			e = 9.0 * atan( pos.y, pos.x);
+			d += balloon * (
+				0.8 * pow( max( 0.0, 1.0 - ( 1.2 - 0.5 * balloon) * abs( pos.z)) * noise( e), 8.0) + 
+				0.2 * pow( max( 0.0, 1.0 - ( 1.8 - 1.1 * balloon) * abs( pos.z)) * noise( 3.0 * e), 4.0)
+				);
+				a = vec3( 3, hit, d);
 			}
-			return a;
 		}
+		return a;
+	}
     
-		vec3 scene( vec3 p, vec3 v){
+		vec3 scene( vec3 position, vec3 v){
 			float i;
 			float e;
-
 			vec3 a = vec3( 1, 0, 99);
-
 			// inner ring
-			//for( i = 0.0; i < 6.1; i++) a = letters( a, p, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
-			for( i = 0.0; i < 6.1; i++) a = letters( a, p, int( mod( i, 26.0)), (i/6.), 0.5 * t);
-			// outer ring
-			//for( i = 0.0; i < 12.1; i++) a = letters( a, p, int( mod( 7.0 + i, 26.0)), 3.6, 0.26 + (PI * 2.) * i / 13.0 - 0.4 * t);
-
+			//for( i = 0.0; i < 6.1; i++) a = letters( a, position, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
+			// line
+			for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
 			// central shere
-			//e = length( p - vec3( 0, 1.55 + 0.2 * sin( 5.0 * t), 0)) - 1.3;
+			//e = length( position - vec3( 0, 1.55 + 0.2 * sin( 5.0 * t), 0)) - 1.3;
 			//if( e < a.z) a = vec3( 2, 0, e);
-
 			// ground
 			/*
 			if( v.y < 0.0){ 
-				e = p.y + 1.5;
+				e = position.y + 1.5;
 				if( e < a.z) a = vec3( 1, 3, e);
 			}
 			*/
@@ -406,93 +400,94 @@ vec3 letters( vec3 a, vec3 p, int n, float r, float h){
 
 		void main(){
 			int i;
-			float f, g, s_0;
-			vec2 w;
-			vec3 n, p, r, best_p;
-			vec3 color;
-			vec3 h, best_h;
-			//ivec2 iw;
-			mat3 cam_mat;
-			vec3 view;
-			vec3 reflected;
-			const float e = 0.001;
+			float f;		
+			const float e = 0.0001;
 
-			w = gl_FragCoord.xy;
-			//iw = ivec2( w);
-			w = 2.0 * w * s - 1.0;
+			//camera
+			vec2 window = gl_FragCoord.xy;
+			window = 2.0 * window * s - 1.0;
+			vec3 position = cam_pos;
+			vec3 best_position = position;
+			vec3 view = normalize( look_at - position);
+			vec3 normals = normalize( cross( vec3( 0, 1, 0), view));
+			mat3 cam_mat = mat3( -normals, normalize( cross( view, normals)), view);
+			view = cam_mat * vec3( window * tan( 30.0 / 180.0 * 3.14159), 1);
+			view = normalize( view);
 
-			//★ 視線の変換行列を求める。
-			p = cam_pos;
-			view = normalize( look_at - p);
-			n = normalize( cross( vec3( 0, 1, 0), view));
-			cam_mat = mat3( -n, normalize( cross( view, n)), view);
-
-			view = cam_mat * vec3( w * tan( 30.0 / 180.0 * 3.14159), 1); //★ 視線を PerspectiveCamera (FOV 40) と一致させる。(半分の 20 で指定。)
-			view = normalize( view); //★ デプスバッファと比較する場合はノーマライズしない (？)
-
-			//◍◍◍◍◍◍◍◍◍◍
-
-			best_h.z = FAR;
-			g = 0.0;
-			for( i = 0; i < 40 && g < FAR; i++){
-				h = scene( p, view);
-				if( h.z < 0.001) break;
-				if( h.z < best_h.z){ best_h = h; best_p = p;}
-				g += h.z;
-				p += h.z * view;
+			//raymarching
+			vec3 hit, best_hit, reflected, color;
+			best_hit.z = FAR;
+			float sdf = 0.0;
+			float inShadow = 0.;
+			for( i = 0; i < 64 && sdf < FAR; i++){
+				hit = scene( position, view);
+				if( hit.z < 0.001) break;
+				if( hit.z < best_hit.z){ 
+					best_hit = hit; 
+					best_position = position;
+				}
+				sdf += hit.z;
+				position += hit.z * view;
 			}
 
-			if( FAR <= g){ //★ 遠い。背景。
+			if( FAR <= sdf){ //★ 遠い。背景。
 				color = texture( tex_env_blur, vec2(
 					0.5 + 0.5 * atan( view.x, view.z) / 3.14159,
 					pow( acos( -view.y) / 3.14159, 0.7) //★ 空を多めに。
-				)).rgb;
-				color += 0.1; //★ 空気遠近法。
+				)).rgb * vec3(0.,0.5,1.0);
+				color += 0.1 * vec3(0.,0.5,1.0);
 
 			} else{
-				if( 0.001 <= h.z){ h = best_h; p = best_p;} //★ 物体の表面にたどり着けなかったら、ここまでで表面にいちばん近かった位置を採用。
+				if( 0.001 <= hit.z ){
+					hit = best_hit; 
+					position = best_position;
+				};
 
-				n = normalize( vec3( //★ 法線。
-					scene( p + vec3( e, 0, 0), view).z,
-					scene( p + vec3( 0, e, 0), view).z,
-					scene( p + vec3( 0, 0, e), view).z
-				) - h.z);
+				normals = normalize( vec3(
+					scene( position + vec3( e, 0, 0), view).z,
+					scene( position + vec3( 0, e, 0), view).z,
+					scene( position + vec3( 0, 0, e), view).z
+				) - hit.z);
 
-				reflected = reflect( view, n);
+				reflected = reflect( view, normals);
 				if( is_shadow
-					&& h.x < 2.1 //★ 1 : 地面 または 2 : 球体。
-				) s_0 = shadow( p, reflected, 20.0); else s_0 = 1.0; //★ 向こう側の明るさが遮られる。
-
-				if( h.x < 1.1){
-					//ground
+					&& hit.x < 2.1 //★ 1 : 地面 または 2 : 球体。
+				) inShadow = shadow( position, reflected, 20.0); else inShadow = 1.0; //★ 向こう側の明るさが遮られる。
+				/*
+				if( hit.x < 1.1){
 					
+					//ground
 					color = texture( tex_env_blur, vec2(
 						0.5 + 0.5 * atan( view.x, view.z) / 3.14159,
 						acos( -view.y) / 3.14159
 					)).rgb;
-					g = 0.333 * ( color.r + color.g + color.b);
-					//color = mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + h.y), sin( 3.14159 * g));
-					//color *= 0.8;
-
+					sdf = 0.333 * ( color.r + color.g + color.b);
+					color = mix( vec3( smoothstep( 0.4, 0.6, sdf)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + hit.y), sin( 3.14159 * sdf));
+					color *= 0.8;
+					
 				} else{
-					// letters
+					*/
+					// letters env map
 					color = texture( tex_env_blur, vec2(
 						0.5 + 0.5 * atan( reflected.x, reflected.z) / 3.14159,
 						acos( -reflected.y) / 3.14159
 					)).rgb;
-					g = 0.333 * ( color.r + color.g + color.b);
-					color *= vec3(0,.7 +g * 1.3,0);
+					sdf = 0.333 * ( color.r + color.g + color.b);
+					color *= vec3(0,.5 +sdf * 0.5,0);
 					color = pow(color,vec3(1.5));
+					//color = mix(color, vec3(0.1+pow(sdf,4.)), 1.-balloon);
 					/*
-					color = h.x < 3.1 ? mix( vec3( smoothstep( 0.4, 0.6, g)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + 0.5 * r + 0.5 * p.y + h.y), sin( 3.14159 * g)) //★ 法線カラーと縦グラデも。
-					 : mix( vec3( smoothstep( 0.4, 0.6, g)), vec3( 1, 0, 0), sin( 3.14159 * g)); //★ くちびるの色。
-					*/
+					gradient coloring
+					color = hit.x < 3.1 ? mix( vec3( smoothstep( 0.4, 0.6, sdf)), 0.5 + 0.5 * cos( vec3( 0, 2, 4) + 0.5 * r + 0.5 * position.y + hit.y), sin( 3.14159 * sdf)) //★ 法線カラーと縦グラデも。
+					 : mix( vec3( smoothstep( 0.4, 0.6, sdf)), vec3( 1, 0, 0), sin( 3.14159 * sdf)); //★ くちびるの色。
+					
 					}
+					*/
 
-				color *= 0.3 + 0.7 * s_0;
+				//color *= 0.3 + 0.7 * inShadow;
 			}
-
-			gl_FragColor = vec4( color, 1);
+			color = pow(color,vec3(1./2.2));
+			gl_FragColor = vec4( vec3(color), 1);
 		}
 	`,
 });
