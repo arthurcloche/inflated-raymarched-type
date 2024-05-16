@@ -9,7 +9,6 @@ const size = 1024;
 const canvas = document.getElementById("canvas");
 canvas.width = size;
 canvas.height = size * 0.5;
-console.log(canvas);
 const dpr = window.devicePixelRatio / window.devicePixelRatio;
 const renderer = new THREE.WebGLRenderer({ canvas });
 renderer.setPixelRatio(dpr);
@@ -18,9 +17,9 @@ renderer.autoClear = false;
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 
 const camera = new THREE.PerspectiveCamera(20, 1 / 1, 0.01, 300);
-camera.position.set(0, 0, 10);
-const look_at = new THREE.Vector3(0, 2, 0);
-const light_dir = new THREE.Vector3(-1, 1, -2).normalize();
+camera.position.set(0, 0, 8);
+const look_at = new THREE.Vector3(0, 0, 0);
+const light_dir = new THREE.Vector3(0, 1, -1).normalize();
 
 const stats = new Stats();
 document.getElementById("container").appendChild(stats.dom);
@@ -33,13 +32,13 @@ const gui = new GUI();
 gui.add(controls, "shadow");
 gui.add(controls, "balloon", 0, 100, 1);
 
-const orbit = new OrbitControls(camera, canvas);
-orbit.target.copy(look_at);
-orbit.minDistance = 5;
-orbit.maxDistance = 15;
-orbit.minPolarAngle = 0.1;
-orbit.maxPolarAngle = 2.7;
-orbit.update();
+// const orbit = new OrbitControls(camera, canvas);
+// orbit.target.copy(look_at);
+// orbit.minDistance = 5;
+// orbit.maxDistance = 15;
+// orbit.minPolarAngle = 0.1;
+// orbit.maxPolarAngle = 2.7;
+//orbit.update();
 
 const textureloader = new THREE.TextureLoader();
 
@@ -74,6 +73,13 @@ const material = new THREE.ShaderMaterial({
     balloon: {},
     tex_env: { value: environment },
     tex_env_blur: { value: environment_blur },
+    mouse: { value: new THREE.Vector2(0, 0) },
+    resolution: {
+      value: new THREE.Vector2(
+        (window.innerWidth - size) / window.innerWidth,
+        (window.innerHeight - size * 0.5) / window.innerHeight
+      ),
+    },
   },
   fragmentShader: `
 		uniform float s, t;
@@ -81,10 +87,15 @@ const material = new THREE.ShaderMaterial({
 		uniform bool is_shadow;
 		uniform float balloon;
 		uniform sampler2D tex_env, tex_env_blur;
+		uniform vec2 mouse;
+		uniform vec2 resolution;
 
-		const float FAR = 20.0; // max view distance
+	const float FAR = 20.0; // max view distance
     const float PI = 3.14159;
-    
+    const float e = 0.0001;
+
+#define mouse (( mouse * 2.0 - 1.0) * 4.)
+
 #define line( x0, y0, x1, y1){ \
 	float sdf, m; \
 	vec2 p0, v1, vp; \
@@ -126,7 +137,7 @@ float arc_dst( vec2 q, float t0, float t1){
 
 float shopify(int letter, vec2 q){
   float d = FAR;
-  vec2 position = q + vec2(0,2);
+  vec2 position = q + vec2(1,2);
   switch(letter){
     case 0 : // S
       arc(1,3,1,0,3);
@@ -337,43 +348,43 @@ float noise( float e){
 # define progress mod(t * .5 + (r * 1.25) * PI * 2., PI * 2.0)
 
 vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
-  	float d, e;
+  	float sdf, e;
 	// circular pos	
   	//vec3 q = vec3( r * sin( hit), 2.0 + 2.0 * sin( r + 0.7 * t - hit), r * cos( hit));
  	// line position	
-  	vec3 pos = vec3( -0.25 + (r - .5) * (7.5 + balloon * 2.) , sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*2. ) * 0.25);
-	  pos = position - pos;
+  	vec3 pos = vec3( (r - .5) * (7.5 + balloon * 2.) , -2.5 + sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*4. ) * 0.35);
+	pos = position - pos;
 	
-	if( length( pos) - 0.8 < a.z){ 
+	if( length( pos) - 1. < a.z){ 
 		pos.xz *= rot(cos(progress) * .25);
 		pos.xy *= rot( sin(progress)*.25);
 		pos *= 3.0;
-		d = length( vec2( shopify( normals, pos.xy), pos.z)) / 3.0
+		sdf = length( vec2( shopify( normals, pos.xy), pos.z)) / 3.0
 		- 0.1 - 0.3 * balloon;
 
-		if( d < a.z){
+		if( sdf < a.z){
 			e = 9.0 * atan( pos.y, pos.x);
-			d += balloon * (
+			sdf += balloon * (
 				0.8 * pow( max( 0.0, 1.0 - ( 1.2 - 0.5 * balloon) * abs( pos.z)) * noise( e), 8.0) + 
 				0.2 * pow( max( 0.0, 1.0 - ( 1.8 - 1.1 * balloon) * abs( pos.z)) * noise( 3.0 * e), 4.0)
 				);
-				a = vec3( 3, hit, d);
+				a = vec3( 1, hit, sdf);
 			}
 		}
 		return a;
 	}
     
-		vec3 scene( vec3 position, vec3 v){
+		vec3 scene( vec3 position, vec3 view){
 			float i;
 			float e;
-			vec3 a = vec3( 1, 0, 99);
+			vec3 a = vec3( 1, 0, FAR);
 			// inner ring
 			//for( i = 0.0; i < 6.1; i++) a = letters( a, position, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
 			// line
-			for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
+			//for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
 			// central shere
-			//e = length( position - vec3( 0, 1.55 + 0.2 * sin( 5.0 * t), 0)) - 1.3;
-			//if( e < a.z) a = vec3( 2, 0, e);
+			e = length( position - vec3( 0.,0., 0.)) - 1.;
+			if( e < a.z) a = vec3(1, 0, e);
 			// ground
 			/*
 			if( v.y < 0.0){ 
@@ -381,7 +392,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 				if( e < a.z) a = vec3( 1, 3, e);
 			}
 			*/
-			return vec3(a.x,a.y,a.z);
+			return a;
 		}
 
 		float shadow( vec3 o, vec3 v, float s){
@@ -398,20 +409,26 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			return max( a, 0.0);
 		}
 
+		vec3 getNormal(vec3 position, vec3 view, vec3 hit){
+			return normalize( vec3(
+				scene( position + vec3( e, 0, 0), view).z,
+				scene( position + vec3( 0, e, 0), view).z,
+				scene( position + vec3( 0, 0, e), view).z
+			) - hit.z);
+		}
+
 		void main(){
 			int i;
 			float f;		
-			const float e = 0.0001;
-
 			//camera
-			vec2 window = gl_FragCoord.xy;
-			window = 2.0 * window * s - 1.0;
-			vec3 position = cam_pos;
+			vec2 window = gl_FragCoord.xy * 2. * s -1.;
+			//window = 2.0 * window * s - 1.0;
+			vec3 position = cam_pos + vec3( 0, 0, 0);
 			vec3 best_position = position;
 			vec3 view = normalize( look_at - position);
 			vec3 normals = normalize( cross( vec3( 0, 1, 0), view));
 			mat3 cam_mat = mat3( -normals, normalize( cross( view, normals)), view);
-			view = cam_mat * vec3( window * tan( 30.0 / 180.0 * 3.14159), 1);
+			view = cam_mat * vec3( window * tan( 60.0 / 180.0 * PI), 1);
 			view = normalize( view);
 
 			//raymarching
@@ -438,17 +455,12 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 				color += 0.1 * vec3(0.,0.5,1.0);
 
 			} else{
-				if( 0.001 <= hit.z ){
+				if( 0.1 <= hit.z ){
 					hit = best_hit; 
 					position = best_position;
 				};
 
-				normals = normalize( vec3(
-					scene( position + vec3( e, 0, 0), view).z,
-					scene( position + vec3( 0, e, 0), view).z,
-					scene( position + vec3( 0, 0, e), view).z
-				) - hit.z);
-
+				normals = getNormal( position,  view,  hit);
 				reflected = reflect( view, normals);
 				if( is_shadow
 					&& hit.x < 2.1 //★ 1 : 地面 または 2 : 球体。
@@ -491,7 +503,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 		}
 	`,
 });
-
+console.log(material);
 plane.material = material;
 scene.add(plane);
 renderer.render(scene, ortho);
@@ -499,6 +511,22 @@ renderer.render(scene, ortho);
 let count = 0;
 animate();
 
+window.addEventListener("mousemove", (e) => {
+  const x = e.clientX / window.innerWidth;
+  const y = e.clientY / window.innerHeight;
+  material.uniforms.mouse.value = new THREE.Vector2(x, y);
+});
+/*
+window.addEventListener("resize", () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  ortho.aspect = width / height;
+  ortho.updateProjectionMatrix();
+});
+*/
 function animate() {
   requestAnimationFrame(animate);
   material.uniforms.t.value = count;
@@ -506,5 +534,6 @@ function animate() {
   material.uniforms.balloon.value = controls.balloon / 100;
   renderer.render(scene, ortho);
   stats.update();
+  //orbit.update();
   count = count + 0.02;
 }
