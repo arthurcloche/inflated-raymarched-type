@@ -41,10 +41,13 @@ orbit.update();
 
 const textureloader = new THREE.TextureLoader();
 
-const environment = textureloader.load("./src/studio.jpg", function (texture) {
-  texture.minFilter = THREE.LinearFilter;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-});
+const environment = textureloader.load(
+  "https://cdn.shopify.com/s/files/1/0817/9308/9592/files/studio.jpg?v=1720074765",
+  function (texture) {
+    texture.minFilter = THREE.LinearFilter;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  }
+);
 
 const environment_blur = textureloader.load(
   "./src/studio-blur.jpg",
@@ -511,15 +514,15 @@ window.addEventListener("mousemove", (e) => {
   material.uniforms.mouse.value = new THREE.Vector2(x, y);
 });
 
-window.addEventListener("resize", () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  renderer.setSize(width, height);
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  ortho.aspect = width / height;
-  ortho.updateProjectionMatrix();
-});
+// window.addEventListener("resize", () => {
+//   const width = window.innerWidth;
+//   const height = window.innerHeight;
+//   renderer.setSize(width, height);
+//   camera.aspect = width / height;
+//   camera.updateProjectionMatrix();
+//   ortho.aspect = width / height;
+//   ortho.updateProjectionMatrix();
+// });
 
 function animate() {
   requestAnimationFrame(animate);
