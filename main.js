@@ -16,29 +16,28 @@ renderer.autoClear = false;
 
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 
-const camera = new THREE.PerspectiveCamera(20, 1 / 1, 0.01, 300);
-camera.position.set(0, 0, 8);
-const look_at = new THREE.Vector3(0, 0, 0);
+const camera = new THREE.PerspectiveCamera(60, 1 / 1, 0.01, 300);
+camera.position.set(0, 1, 0);
+const look_at = new THREE.Vector3(0, 1, 0);
 const light_dir = new THREE.Vector3(0, 1, -1).normalize();
 
 const stats = new Stats();
 document.getElementById("container").appendChild(stats.dom);
 
 const controls = {
-  shadow: false,
   balloon: 50,
 };
 const gui = new GUI();
-gui.add(controls, "shadow");
+// gui.add(controls, "shadow");
 gui.add(controls, "balloon", 0, 100, 1);
 
-// const orbit = new OrbitControls(camera, canvas);
-// orbit.target.copy(look_at);
-// orbit.minDistance = 5;
-// orbit.maxDistance = 15;
-// orbit.minPolarAngle = 0.1;
-// orbit.maxPolarAngle = 2.7;
-//orbit.update();
+const orbit = new OrbitControls(camera, canvas);
+orbit.target.copy(look_at);
+orbit.minDistance = 5;
+orbit.maxDistance = 15;
+orbit.minPolarAngle = 0.1;
+orbit.maxPolarAngle = 2.7;
+orbit.update();
 
 const textureloader = new THREE.TextureLoader();
 
@@ -352,7 +351,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 	// circular pos	
   	//vec3 q = vec3( r * sin( hit), 2.0 + 2.0 * sin( r + 0.7 * t - hit), r * cos( hit));
  	// line position	
-  	vec3 pos = vec3( (r - .5) * (7.5 + balloon * 2.) , -2.5 + sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*4. ) * 0.35);
+  	vec3 pos = vec3( (r - .5) * (7.5 + balloon * 2.) , -1.5 + sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*4. ) * 0.35);
 	pos = position - pos;
 	
 	if( length( pos) - 1. < a.z){ 
@@ -381,13 +380,13 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			// inner ring
 			//for( i = 0.0; i < 6.1; i++) a = letters( a, position, int( mod( i, 26.0)), 2.2, (PI * 2.) * i / 7.0 + 0.5 * t);
 			// line
-			//for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
+			for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
 			// central shere
-			e = length( position - vec3( 0.,0., 0.)) - 1.;
-			if( e < a.z) a = vec3(1, 0, e);
+			// e = length( position - vec3( 0.,-2., 0.)) - 1.;
+			//if( e < a.z) a = vec3(1, 0, e);
 			// ground
 			/*
-			if( v.y < 0.0){ 
+			if( view.y < 0.0){ 
 				e = position.y + 1.5;
 				if( e < a.z) a = vec3( 1, 3, e);
 			}
@@ -447,7 +446,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 				position += hit.z * view;
 			}
 
-			if( FAR <= sdf){ //★ 遠い。背景。
+			if( FAR <= sdf){ 
 				color = texture( tex_env_blur, vec2(
 					0.5 + 0.5 * atan( view.x, view.z) / 3.14159,
 					pow( acos( -view.y) / 3.14159, 0.7) //★ 空を多めに。
@@ -503,7 +502,6 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 		}
 	`,
 });
-console.log(material);
 plane.material = material;
 scene.add(plane);
 renderer.render(scene, ortho);
@@ -516,7 +514,7 @@ window.addEventListener("mousemove", (e) => {
   const y = e.clientY / window.innerHeight;
   material.uniforms.mouse.value = new THREE.Vector2(x, y);
 });
-/*
+
 window.addEventListener("resize", () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -526,7 +524,7 @@ window.addEventListener("resize", () => {
   ortho.aspect = width / height;
   ortho.updateProjectionMatrix();
 });
-*/
+
 function animate() {
   requestAnimationFrame(animate);
   material.uniforms.t.value = count;
