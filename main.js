@@ -50,7 +50,7 @@ const environment = textureloader.load(
 );
 
 const environment_blur = textureloader.load(
-  "./src/studio-blur.jpg",
+  "https://cdn.shopify.com/s/files/1/0817/9308/9592/files/studio-blur.jpg?v=1720074765",
   function (texture) {
     texture.minFilter = THREE.LinearFilter;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
