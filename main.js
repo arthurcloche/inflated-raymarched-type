@@ -16,10 +16,10 @@ renderer.autoClear = false;
 
 const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 
-const camera = new THREE.PerspectiveCamera(60, 1 / 1, 0.01, 300);
-camera.position.set(0, 1, 0);
-const look_at = new THREE.Vector3(0, 1, 0);
-const light_dir = new THREE.Vector3(0, 1, -1).normalize();
+const camera = new THREE.PerspectiveCamera(20, 1 / 1, 0.01, 300);
+camera.position.set(0, 0, 10);
+const look_at = new THREE.Vector3(0, 2, 0);
+const light_dir = new THREE.Vector3(-1, 1, -2).normalize();
 
 const stats = new Stats();
 document.getElementById("container").appendChild(stats.dom);
@@ -56,10 +56,6 @@ const environment_blur = textureloader.load(
 
 const ortho = new THREE.OrthographicCamera(0, 1, 1, -1, -1, 1);
 const scene = new THREE.Scene();
-// const material = new THREE.MeshBasicMaterial({
-//   color: 0x00ff00,
-//   side: THREE.DoubleSide,
-// });
 
 const material = new THREE.ShaderMaterial({
   uniforms: {
@@ -136,7 +132,7 @@ float arc_dst( vec2 q, float t0, float t1){
 
 float shopify(int letter, vec2 q){
   float d = FAR;
-  vec2 position = q + vec2(1,2);
+  vec2 position = q + vec2(0,2);
   switch(letter){
     case 0 : // S
       arc(1,3,1,0,3);
@@ -382,7 +378,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			// line
 			for( i = 0.0; i < 7.0; i++) a = letters( a, position, int( mod( i, 26.0)), (i/6.), 0.5 * t);
 			// central shere
-			// e = length( position - vec3( 0.,-2., 0.)) - 1.;
+			//e = length( position - vec3( 0.,-1., 0.)) - 1.;
 			//if( e < a.z) a = vec3(1, 0, e);
 			// ground
 			/*
@@ -422,12 +418,12 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			//camera
 			vec2 window = gl_FragCoord.xy * 2. * s -1.;
 			//window = 2.0 * window * s - 1.0;
-			vec3 position = cam_pos + vec3( 0, 0, 0);
+			vec3 position = cam_pos + vec3( 0, 0., 0);
 			vec3 best_position = position;
 			vec3 view = normalize( look_at - position);
 			vec3 normals = normalize( cross( vec3( 0, 1, 0), view));
 			mat3 cam_mat = mat3( -normals, normalize( cross( view, normals)), view);
-			view = cam_mat * vec3( window * tan( 60.0 / 180.0 * PI), 1);
+			view = cam_mat * vec3( window * tan( 30.0 / 180.0 * PI), 1);
 			view = normalize( view);
 
 			//raymarching
@@ -436,7 +432,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			float sdf = 0.0;
 			float inShadow = 0.;
 			for( i = 0; i < 64 && sdf < FAR; i++){
-				hit = scene( position, view);
+				hit = scene( position , view);
 				if( hit.z < 0.001) break;
 				if( hit.z < best_hit.z){ 
 					best_hit = hit; 
