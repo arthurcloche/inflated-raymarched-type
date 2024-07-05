@@ -4,11 +4,12 @@ import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 console.clear();
 
-const size = 1024;
-
+const width = window.innerWidth;
+const height = window.innerHeight;
+const size = Math.max(width, height);
 const canvas = document.getElementById("canvas");
-canvas.width = size;
-canvas.height = size * 0.5;
+canvas.width = width;
+canvas.height = height;
 const dpr = window.devicePixelRatio / window.devicePixelRatio;
 const renderer = new THREE.WebGLRenderer({ canvas });
 renderer.setPixelRatio(dpr);
@@ -350,7 +351,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 	// circular pos	
   	//vec3 q = vec3( r * sin( hit), 2.0 + 2.0 * sin( r + 0.7 * t - hit), r * cos( hit));
  	// line position	
-  	vec3 pos = vec3( (r - .5) * (7.5 + balloon * 2.) , -1.5 + sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*4. ) * 0.35);
+  	vec3 pos = vec3( (r - .5) * (7.5 + balloon * 2.) , s + sin(hit + (r-.5)*PI*2. ) * 0.25, 0.5-cos(hit + (r-.5)*PI*4. ) * 0.35);
 	pos = position - pos;
 	
 	if( length( pos) - 1. < a.z){ 
@@ -420,7 +421,7 @@ vec3 letters( vec3 a, vec3 position, int normals, float r, float hit){
 			float f;		
 			//camera
 			vec2 window = gl_FragCoord.xy * 2. * s -1.;
-			//window = 2.0 * window * s - 1.0;
+			// window = 2.0 * window * s - 1.0;
 			vec3 position = cam_pos + vec3( 0, 0., 0);
 			vec3 best_position = position;
 			vec3 view = normalize( look_at - position);
@@ -514,15 +515,15 @@ window.addEventListener("mousemove", (e) => {
   material.uniforms.mouse.value = new THREE.Vector2(x, y);
 });
 
-// window.addEventListener("resize", () => {
-//   const width = window.innerWidth;
-//   const height = window.innerHeight;
-//   renderer.setSize(width, height);
-//   camera.aspect = width / height;
-//   camera.updateProjectionMatrix();
-//   ortho.aspect = width / height;
-//   ortho.updateProjectionMatrix();
-// });
+window.addEventListener("resize", () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+  ortho.aspect = width / height;
+  ortho.updateProjectionMatrix();
+});
 
 function animate() {
   requestAnimationFrame(animate);

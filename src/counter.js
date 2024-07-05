@@ -54,7 +54,7 @@ o.update();
 const tl = new THREE.TextureLoader();
 
 const tex_env = tl.load("cafe.jpg", function (t) {});
-tex_env.minFilter = THREE.LinearFilter; //★ ← これがないと謎の境界線が出る。デフォルトが THREE.LinearMipmapLinearFilter になっているゆえ。
+tex_env.minFilter = THREE.LinearFilter;
 tex_env.wrapS = tex_env.wrapT = THREE.RepeatWrapping;
 
 const tex_env_blur = tl.load("cafe_blur.jpg", function (t) {});
